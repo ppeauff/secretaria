@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mural</title>
+<style>
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    background: #000;
+    overflow: hidden;
+    cursor: none;
+  }
+  #palco { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+  .camada {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    opacity: 0;
+    -webkit-transition: opacity 1.2s ease-in-out;
+    transition: opacity 1.2s ease-in-out;
+  }
+  .camada.ativa { opacity: 1; }
+
+  .camada .foto {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: contain;
+  }
+  .camada .fundo {
+    position: absolute; top: -4%; left: -4%; width: 108%; height: 108%;
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: cover;
+    -webkit-filter: blur(28px) brightness(0.45);
+    filter: blur(28px) brightness(0.45);
+    display: none;
+  }
+
+  /* Barra de tempo da imagem atual */
+  #barra {
+    position: absolute; bottom: 0; left: 0; height: 4px; width: 0;
+    background: #ffffff;
+    opacity: 0.35;
+  }
+
+  /* Aviso de estado: só aparece quando há algo a resolver */
+  #aviso {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    display: none;
+    color: #f2f2f2;
+    background: #000;
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    text-align: center;
+  }
+  #aviso .caixa {
+    position: absolute; top: 50%; left: 50%;
+    width: 70%;
+    margin-left: -35%;
+    margin-top: -120px;
+  }
+  #aviso h1 { font-size: 42px; font-weight: 600; margin: 0 0 18px 0; letter-spacing: -0.5px; }
+  #aviso p  { font-size: 26px; line-height: 1.5; margin: 0 0 10px 0; color: #b9b9b9; }
+  #aviso code { color: #ffd479; font-size: 24px; }
+</style>
+</head>
+<body>
+
+<div id="palco">
+  <div class="camada" id="c0"><div class="fundo"></div><div class="foto"></div></div>
+  <div class="camada" id="c1"><div class="fundo"></div><div class="foto"></div></div>
+</div>
+<div id="barra"></div>
+
+<div id="aviso">
+  <div class="caixa">
+    <h1 id="avisoTitulo">Preparando o mural</h1>
+    <p id="avisoTexto">Lendo a pasta do Google Drive…</p>
+  </div>
+</div>
+
+<script>
+/* =======================================================================
+   MURAL — slideshow de imagens de uma pasta do Google Drive
+   Ajuste apenas o bloco CONFIG abaixo.
+   ======================================================================= */
+var CONFIG = {
+
+  // 1) ID da pasta do Drive (o trecho depois de /folders/ na URL da pasta)
+  PASTA_ID: "1J9GV51gd63eT_oknpJwdAHa98Svli3C-?usp=sharing",
+
+  // 2) Chave de API do Google (API key, Google Drive API habilitada)
+  API_KEY: "AIzaSyDOg7olYDFSZvvJjIKmfiJEaZOzp9EUiXg",
+
+  // Tempo de cada imagem, em segundos
+  SEGUNDOS: 30,
+
+  // "contain" = imagem inteira sempre visível (recomendado)
+  // "cover"   = preenche a tela toda, cortando as bordas
+  AJUSTE: "contain",
+
+  // Preenche as laterais com uma versão desfocada da própria imagem.
+  // Útil se houver fotos em pé misturadas com deitadas.
+  FUNDO_DESFOCADO: false,
+
+  // Ordem: false = alfabética pelo nome do arquivo; true = aleatória
+  EMBARALHAR: false,
+
+  // De quantos em quantos minutos reler a pasta (pega fotos novas sozinho)
+  ATUALIZAR_MIN: 10,
+
+  // Mostrar a barrinha de tempo no rodapé
+  MOSTRAR_BARRA: true,
+
+  // Alternativa sem API key: liste aqui os IDs dos arquivos, um por linha.
+  // Se esta lista estiver preenchida, PASTA_ID e API_KEY são ignorados.
+  IDS_MANUAIS: [
+    // "1AbC...",
+    // "1DeF..."
+  ]
+};
+
+/* ============================ daqui para baixo, não precisa mexer ============================ */
+
+var LARGURA = 1920;
+var camadas = [document.getElementById("c0"), document.getElementById("c1")];
+var atual = 0;
+var lista = [];
+var indice = -1;
+var falhasSeguidas = 0;
+var timerSlide = null;
+var timerBarra = null;
+var barra = document.getElementById("barra");
+var aviso = document.getElementById("aviso");
+
+function mostrarAviso(titulo, texto) {
+  document.getElementById("avisoTitulo").innerHTML = titulo;
+  document.getElementById("avisoTexto").innerHTML = texto;
+  aviso.style.display = "block";
+}
+function esconderAviso() { aviso.style.display = "none"; }
+
+function urlPrincipal(id) {
+  return "https://drive.google.com/thumbnail?id=" + id + "&sz=w" + LARGURA;
+}
+function urlReserva(id) {
+  return "https://lh3.googleusercontent.com/d/" + id + "=w" + LARGURA;
+}
+
+/* ---------- leitura da pasta ---------- */
+function lerPasta(depois) {
+  if (CONFIG.IDS_MANUAIS && CONFIG.IDS_MANUAIS.length > 0) {
+    depois(CONFIG.IDS_MANUAIS.slice(0));
+    return;
+  }
+  if (CONFIG.PASTA_ID.indexOf("COLE_AQUI") === 0 || CONFIG.API_KEY.indexOf("COLE_AQUI") === 0) {
+    mostrarAviso("Falta configurar a pasta",
+      "Abra o arquivo em um editor de texto e preencha <code>PASTA_ID</code> e <code>API_KEY</code> no início do script.");
+    return;
+  }
+
+  var url = "https://www.googleapis.com/drive/v3/files"
+    + "?q=" + encodeURIComponent("'" + CONFIG.PASTA_ID + "' in parents and mimeType contains 'image/' and trashed = false")
+    + "&fields=" + encodeURIComponent("files(id,name)")
+    + "&orderBy=name"
+    + "&pageSize=1000"
+    + "&supportsAllDrives=true&includeItemsFromAllDrives=true"
+    + "&key=" + CONFIG.API_KEY;
+
+  var req = new XMLHttpRequest();
+  req.open("GET", url, true);
+  req.onreadystatechange = function () {
+    if (req.readyState !== 4) return;
+    if (req.status === 200) {
+      var dados;
+      try { dados = JSON.parse(req.responseText); } catch (e) { dados = null; }
+      var ids = [];
+      if (dados && dados.files) {
+        for (var i = 0; i < dados.files.length; i++) ids.push(dados.files[i].id);
+      }
+      depois(ids);
+    } else if (lista.length === 0) {
+      mostrarAviso("Não consegui ler a pasta",
+        "O Drive respondeu com o código " + req.status + ". Confira se a pasta está compartilhada como “qualquer pessoa com o link” e se a API key é válida.");
+      setTimeout(function () { lerPasta(depois); }, 60000);
+    }
+  };
+  req.send(null);
+}
+
+function embaralhar(a) {
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+
+function receberLista(ids) {
+  if (!ids || ids.length === 0) {
+    if (lista.length === 0) {
+      mostrarAviso("Nenhuma imagem na pasta",
+        "Coloque arquivos JPG ou PNG na pasta do Drive. A tela se atualiza sozinha em alguns minutos.");
+    }
+    return;
+  }
+  if (CONFIG.EMBARALHAR) ids = embaralhar(ids);
+  lista = ids;
+  esconderAviso();
+  if (indice === -1) proximo();
+}
+
+/* ---------- exibição ---------- */
+function pintar(camada, url) {
+  var foto = camada.getElementsByClassName("foto")[0];
+  var fundo = camada.getElementsByClassName("fundo")[0];
+  foto.style.backgroundImage = "url('" + url + "')";
+  foto.style.backgroundSize = CONFIG.AJUSTE;
+  if (CONFIG.FUNDO_DESFOCADO && CONFIG.AJUSTE === "contain") {
+    fundo.style.backgroundImage = "url('" + url + "')";
+    fundo.style.display = "block";
+  }
+}
+
+function trocarPara(url) {
+  var proxima = 1 - atual;
+  pintar(camadas[proxima], url);
+  camadas[proxima].className = "camada ativa";
+  camadas[atual].className = "camada";
+  atual = proxima;
+}
+
+function carregar(url, feito) {
+  var img = new Image();
+  var respondido = false;
+  img.onload = function () { if (!respondido) { respondido = true; feito(true); } };
+  img.onerror = function () { if (!respondido) { respondido = true; feito(false); } };
+  setTimeout(function () { if (!respondido) { respondido = true; feito(false); } }, 20000);
+  img.src = url;
+}
+
+function animarBarra() {
+  if (!CONFIG.MOSTRAR_BARRA) return;
+  var inicio = new Date().getTime();
+  var total = CONFIG.SEGUNDOS * 1000;
+  if (timerBarra) clearInterval(timerBarra);
+  timerBarra = setInterval(function () {
+    var p = (new Date().getTime() - inicio) / total;
+    if (p > 1) p = 1;
+    barra.style.width = (p * 100) + "%";
+  }, 250);
+}
+
+function proximo() {
+  if (timerSlide) clearTimeout(timerSlide);
+  if (lista.length === 0) return;
+
+  indice = (indice + 1) % lista.length;
+  var id = lista[indice];
+
+  carregar(urlPrincipal(id), function (ok) {
+    if (ok) {
+      exibir(urlPrincipal(id));
+    } else {
+      carregar(urlReserva(id), function (ok2) {
+        if (ok2) {
+          exibir(urlReserva(id));
+        } else {
+          falhasSeguidas++;
+          if (falhasSeguidas >= lista.length) {
+            falhasSeguidas = 0;
+            mostrarAviso("Sem conexão com o Drive",
+              "As imagens não estão carregando. Vou tentar de novo em instantes.");
+            timerSlide = setTimeout(proximo, 30000);
+          } else {
+            proximo();
+          }
+        }
+      });
+    }
+  });
+}
+
+function exibir(url) {
+  falhasSeguidas = 0;
+  esconderAviso();
+  trocarPara(url);
+  animarBarra();
+  timerSlide = setTimeout(proximo, CONFIG.SEGUNDOS * 1000);
+}
+
+/* ---------- controles opcionais no teclado/controle remoto ---------- */
+document.onkeydown = function (e) {
+  var k = (e || window.event).keyCode;
+  if (k === 39) { proximo(); }                                  // seta direita: pula
+  if (k === 37) { indice = indice - 2; if (indice < -1) indice = lista.length - 2; proximo(); } // seta esquerda
+  if (k === 13 || k === 70) {                                   // enter / F: tela cheia
+    var el = document.documentElement;
+    if (el.requestFullscreen) el.requestFullscreen();
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
+  }
+};
+
+/* Evita que a TV entre em descanso, quando o navegador oferece o recurso */
+function segurarTela() {
+  try {
+    if (navigator.wakeLock && navigator.wakeLock.request) {
+      navigator.wakeLock.request("screen")["catch"](function () {});
+    }
+  } catch (e) {}
+}
+document.addEventListener("visibilitychange", function () {
+  if (!document.hidden) segurarTela();
+});
+
+/* ---------- início ---------- */
+mostrarAviso("Preparando o mural", "Lendo a pasta do Google Drive…");
+segurarTela();
+lerPasta(receberLista);
+setInterval(function () { lerPasta(receberLista); }, CONFIG.ATUALIZAR_MIN * 60 * 1000);
+</script>
+</body>
+</html>
