@@ -1,0 +1,20 @@
+# Dados reais — nunca commitar
+*.csv
+*.xlsx
+*.xls
+*.pdf
+*.docx
+*.jpg
+*.jpeg
+*.png
+backup*
+dados*
+
+# Exceções: imagens do próprio site
+!logo.svg
+
+# Lixo do sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+node_modules/
