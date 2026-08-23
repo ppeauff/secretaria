@@ -503,6 +503,9 @@ const Demo = (function(){
       const [item]=db.lixeira[campo].splice(i,1); delete item.excluidoEm; delete item.excluidoPor;
       db[campo].push(item); return {ok:true};
     },
+    modelosCarregar(){
+      return {ok:false, erro:'No modo de demonstração os modelos são anexados à mão. A carga automática do Drive funciona no modo de produção.'};
+    },
     reiniciarDemo(){ try{ localStorage.removeItem(CHAVE); }catch(e){} semear(true); return {ok:true}; }
   };
 
@@ -570,6 +573,7 @@ global.DB = {
   marcarDocumentosEmitidos: id => executar('bancaDocumentos',{id}),
   removerBanca: id => executar('bancaRemover',{id}),
   restaurar: (tipo,id) => executar('restaurar',{tipo,id}),
+  carregarModelos: () => executar('modelosCarregar',{}),
   reiniciarDemo: ()=> MODO==='demo' ? executar('reiniciarDemo',{}) : Promise.resolve({ok:false, erro:'Disponível apenas no modo de demonstração.'})
 };
 
