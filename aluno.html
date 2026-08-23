@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PPEA – Portal do Discente</title>
+<meta name="description" content="Portal do Discente PPEA/UFF — marcação de banca, cadastro de participante externo e consulta de protocolo.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%230d1b3d'/%3E%3Ctext x='12' y='17' font-family='Georgia,serif' font-size='14' fill='%23c9a249' text-anchor='middle'%3EP%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<script src="db.js"></script>
+<style>
+:root{
+  --azul:#0d1b3d; --azul-2:#16285a; --dourado:#c9a249; --dourado-2:#e3c075;
+  --creme:#f4ecd8; --creme-2:#fbf6e8; --texto:#1a1f2e; --cinza:#6b7280;
+  --cinza-2:#cbd5e1; --cinza-3:#e5e7eb; --vermelho:#b91c1c; --verde:#15803d; --ambar:#a16207;
+  --serif:'Cormorant Garamond',Georgia,serif; --sans:'Inter',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+html,body{background:var(--creme);color:var(--texto);font-family:var(--sans);font-size:15px;line-height:1.55}
+a{color:var(--azul);text-decoration:none} a:hover{text-decoration:underline}
+:focus-visible{outline:2.5px solid var(--dourado);outline-offset:2px;border-radius:4px}
+button:focus-visible{outline-offset:3px}
+@media(prefers-reduced-motion:reduce){ html{scroll-behavior:auto} *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important} }
+@keyframes entra{from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)}}
+#pane-banca section.card:not(.hidden){animation:entra .28s ease}
+header.top{background:var(--azul);border-bottom:3px solid var(--dourado);padding:18px 32px;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:8px}
+header.top .uff{color:#fff;font-size:13px;letter-spacing:.3px;line-height:1.4}
+header.top .uff strong{display:block;color:var(--dourado-2);font-weight:600;font-size:14px;margin-bottom:2px}
+header.top .ppea{color:var(--dourado-2);font-weight:600;letter-spacing:2px;font-size:15px}
+header.top .voltar{color:rgba(255,255,255,.7);font-size:12.5px}
+.wrap{max-width:1080px;margin:0 auto;padding:36px 24px 80px}
+.crumb{font-size:13px;color:var(--cinza);margin-bottom:14px}
+.crumb a{color:var(--azul)} .crumb span.sep{margin:0 6px;color:var(--cinza-2)}
+
+/* Abas principais do portal */
+.faixa-sistema{padding:10px 24px;font-size:13.5px;text-align:center;font-weight:500}
+.faixa-sistema.demo{background:#fde68a;color:#78350f;border-bottom:1px solid #f59e0b}
+.faixa-sistema.erro{background:#fee2e2;color:#7f1d1d;border-bottom:1px solid #b91c1c}
+.tabbar{display:flex;gap:4px;max-width:1080px;margin:0 auto;padding:0 24px;overflow-x:auto;background:var(--creme);position:sticky;top:0;z-index:30;border-bottom:1px solid var(--cinza-3)}
+.tabbar button{background:none;border:none;border-bottom:3px solid transparent;padding:15px 18px 13px;font-family:var(--sans);font-weight:600;font-size:14px;color:var(--cinza);cursor:pointer;white-space:nowrap;transition:color .15s,border-color .15s}
+.tabbar button.on{color:var(--azul);border-color:var(--dourado)}
+.tabbar button:hover:not(.on){color:var(--azul-2)}
+
+.card{background:#fff;border-radius:14px;box-shadow:0 6px 30px rgba(13,27,61,.07);padding:42px 44px;margin-bottom:24px}
+.card h1{font-family:var(--serif);font-style:italic;font-weight:500;font-size:40px;color:var(--azul);text-align:center;line-height:1.1}
+.card h2{font-family:var(--serif);font-weight:600;font-size:24px;color:var(--azul);margin-bottom:8px}
+.card .lede{text-align:center;color:var(--cinza);margin-top:8px;font-size:15px}
+.pill{display:inline-block;background:var(--azul);color:var(--dourado-2);font-size:11px;letter-spacing:2.5px;font-weight:600;padding:7px 18px;border-radius:999px;border:1px solid var(--dourado)}
+.center{text-align:center}
+.steps{display:flex;justify-content:center;gap:6px;margin:0 0 18px}
+.steps .dot{width:8px;height:8px;border-radius:50%;background:var(--cinza-2);transition:transform .15s}
+.steps .dot.on{background:var(--dourado);box-shadow:0 0 0 3px rgba(201,162,73,.18)}
+.steps .dot.clicavel{cursor:pointer}
+.steps .dot.clicavel:hover{transform:scale(1.4)}
+.steps-label{text-align:center;font-size:12px;letter-spacing:2px;color:var(--cinza);text-transform:uppercase;margin-bottom:18px}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:22px;max-width:640px;margin:36px auto 0}
+.choice{cursor:pointer;background:#fff;border:1px solid var(--cinza-3);border-radius:14px;padding:36px 22px 28px;text-align:center;transition:all .25s ease}
+.choice:hover{border-color:var(--dourado);transform:translateY(-3px);box-shadow:0 12px 32px rgba(13,27,61,.10)}
+.choice .icon{width:68px;height:68px;margin:0 auto 14px;background:var(--azul);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--dourado-2)}
+.choice .icon svg{width:30px;height:30px;stroke:currentColor;fill:none;stroke-width:2}
+.choice h3{font-family:var(--serif);font-size:26px;color:var(--azul);font-weight:600;margin-bottom:4px}
+.choice p{color:var(--cinza);font-size:14px}
+.list{display:grid;gap:12px;margin-top:28px}
+.row{display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid var(--cinza-3);border-radius:10px;padding:16px 22px;cursor:pointer;transition:all .2s ease}
+.row:hover{border-color:var(--dourado);background:var(--creme-2)}
+.row .ttl{font-family:var(--serif);font-size:20px;color:var(--azul);font-weight:600}
+.row .meta{font-size:13px;color:var(--cinza);margin-top:2px}
+.row .arr{color:var(--dourado);font-size:20px}
+.empty{text-align:center;padding:40px 0;color:var(--cinza);font-style:italic}
+.tipos{display:grid;grid-template-columns:1fr;gap:14px;margin-top:28px}
+@media(min-width:720px){.tipos{grid-template-columns:1fr 1fr 1fr}}
+.tipo{cursor:pointer;background:#fff;border:1px solid var(--cinza-3);border-radius:12px;padding:24px 20px;text-align:center;transition:all .2s ease}
+.tipo:hover{border-color:var(--dourado);background:var(--creme-2);transform:translateY(-2px)}
+.tipo h4{font-family:var(--serif);font-size:21px;color:var(--azul);font-weight:600;margin-bottom:6px}
+.tipo p{font-size:13px;color:var(--cinza)}
+.section{background:#fff;border-left:4px solid var(--dourado);padding:24px 28px;border-radius:8px;margin-bottom:18px}
+.section .label-section{font-size:11px;letter-spacing:2.5px;color:var(--dourado);text-transform:uppercase;font-weight:600;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--cinza-3)}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+@media(max-width:640px){.grid-2,.grid-3{grid-template-columns:1fr}}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:11px;letter-spacing:1.5px;color:var(--cinza);text-transform:uppercase;font-weight:600;margin-bottom:6px}
+.field input,.field textarea,.field select{width:100%;border:1px solid var(--cinza-3);border-radius:8px;padding:10px 12px;font-family:var(--sans);font-size:14px;background:#fff;transition:border .15s}
+.field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:var(--dourado);box-shadow:0 0 0 3px rgba(201,162,73,.15)}
+.field textarea{min-height:64px;resize:vertical}
+.hint{font-size:12px;color:var(--cinza);font-style:italic;margin-left:6px}
+.toggle{display:flex;gap:10px;flex-wrap:wrap}
+.toggle button{background:#fff;border:1px solid var(--cinza-3);padding:10px 22px;border-radius:8px;cursor:pointer;font-family:var(--sans);font-size:13px;font-weight:600;letter-spacing:.5px;transition:all .2s}
+.toggle button.on{background:var(--azul);color:#fff;border-color:var(--azul)}
+.toggle button:hover:not(.on){border-color:var(--dourado)}
+table.comissao{width:100%;border-collapse:collapse;margin-top:8px}
+table.comissao thead{background:var(--azul);color:#fff}
+table.comissao th{padding:10px 12px;font-size:11px;letter-spacing:1.5px;text-align:left;font-weight:600}
+table.comissao td{padding:10px 8px;border-bottom:1px solid var(--cinza-3);vertical-align:top}
+table.comissao .role strong{display:block;color:var(--azul);font-size:14px;margin-bottom:2px}
+table.comissao .role small{color:var(--cinza);font-size:11px;font-style:italic}
+table.comissao input{width:100%;border:1px solid var(--cinza-3);border-radius:6px;padding:8px 10px;font-size:13px}
+table.comissao input:focus{outline:none;border-color:var(--dourado)}
+@media(max-width:760px){
+  table.comissao thead{display:none}
+  table.comissao tr{display:block;border:1px solid var(--cinza-3);border-radius:8px;margin-bottom:10px;padding:10px}
+  table.comissao td{display:block;border:none;padding:6px 0}
+  table.comissao td::before{content:attr(data-l);font-size:10px;color:var(--cinza);letter-spacing:1.5px;text-transform:uppercase;font-weight:600;display:block;margin-bottom:3px}
+}
+.actions{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:8px}
+.btn{padding:12px 26px;border-radius:8px;font-family:var(--sans);font-size:14px;font-weight:600;letter-spacing:.5px;cursor:pointer;border:1px solid transparent;transition:all .15s}
+.btn-primary{background:var(--azul);color:#fff} .btn-primary:hover{background:var(--azul-2)}
+.btn-ghost{background:#fff;color:var(--azul);border-color:var(--cinza-3)} .btn-ghost:hover{border-color:var(--azul)}
+.confirma{text-align:center;padding:30px 0}
+.confirma .check{width:72px;height:72px;border-radius:50%;background:rgba(21,128,61,.1);color:var(--verde);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;font-size:38px}
+.protocolo{display:inline-block;background:var(--creme-2);border:1px dashed var(--dourado);padding:14px 28px;border-radius:10px;font-family:var(--serif);font-size:30px;color:var(--azul);font-weight:600;margin:14px 0;letter-spacing:2px}
+.hidden{display:none !important} .danger{color:var(--vermelho)}
+.banner-erro{background:#fee2e2;color:#7f1d1d;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px}
+.banner-aviso{background:#fef3c7;color:#78350f;padding:12px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;border-left:3px solid var(--ambar)}
+.banner-info{background:#eef2ff;color:#1e3a8a;padding:12px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;border-left:3px solid var(--azul-2)}
+.footer-link{text-align:center;margin-top:18px;font-size:14px;color:var(--cinza)}
+.footer-link a{font-weight:500;color:var(--azul);border-bottom:1px solid var(--dourado);padding-bottom:1px}
+.regras-box{background:var(--creme-2);border:1px solid var(--cinza-3);border-radius:10px;padding:16px 20px;margin-top:22px;font-size:13.5px;color:var(--texto)}
+.regras-box b{color:var(--azul)}
+.regras-box ul{margin:8px 0 0 18px} .regras-box li{margin-bottom:4px}
+
+/* Cadastro externo — reaproveita o mesmo esqueleto de card */
+.grid.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px 18px}
+@media(max-width:640px){.grid.g2{grid-template-columns:1fr}}
+.titul{border:1px solid var(--cinza-3);border-radius:10px;overflow:hidden;margin-top:6px}
+.titul .thead,.titul .trow{display:grid;grid-template-columns:150px 1.4fr 1.4fr 96px;align-items:center}
+.titul .thead{background:var(--creme-2);border-bottom:1px solid var(--cinza-3);font-size:11px;font-weight:700;color:var(--cinza);text-transform:uppercase;letter-spacing:.05em}
+.titul .thead>div{padding:10px 12px}
+.titul .trow{border-bottom:1px solid var(--cinza-3)}
+.titul .trow:last-child{border-bottom:none}
+.titul .trow.key{background:#fbfaf5}
+.titul .lvl{padding:11px;font-weight:600;font-size:13.5px;color:var(--azul-2);display:flex;align-items:center;gap:7px}
+.titul .lvl .star{color:var(--dourado);font-size:11px}
+.titul .cell{padding:7px}
+.titul .cell input{width:100%;border:1px solid var(--cinza-3);background:#fff;border-radius:6px;font-family:var(--sans);font-size:13px;padding:7px 9px;color:var(--texto)}
+.titul .cell input:focus{outline:none;border-color:var(--dourado)}
+@media(max-width:640px){
+  .titul .thead{display:none}
+  .titul .trow{grid-template-columns:1fr;padding:6px 6px 12px}
+  .titul .lvl{padding:10px 6px 4px}
+  .titul .cell::before{content:attr(data-lbl);display:block;font-size:11px;color:var(--cinza);margin:0 3px 4px;font-weight:600}
+}
+.drop{border:1.5px dashed var(--cinza-2);border-radius:10px;background:var(--creme-2);padding:24px 20px;text-align:center;cursor:pointer;transition:all .15s}
+.drop:hover,.drop.drag{border-color:var(--dourado);background:#fdf8ec}
+.drop .big{font-weight:600;color:var(--azul-2);font-size:14px}
+.drop .sub{font-size:12.5px;color:var(--cinza);margin-top:4px}
+.drop input[type=file]{display:none}
+.filechip{display:none;align-items:center;gap:10px;margin-top:12px;background:#fff;border:1px solid var(--cinza-3);border-radius:8px;padding:10px 12px}
+.filechip.show{display:flex}
+.filechip .fn{font-size:13px;font-weight:600;color:var(--texto)}
+.filechip .rm{appearance:none;border:none;background:none;color:var(--cinza);cursor:pointer;font-size:18px;padding:4px}
+.consulta-row{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.consulta-row .field{flex:1;min-width:220px;margin-bottom:0}
+
+/* Modal leve + toast (substituem prompt()/alert() nativos) */
+.modal-bg{position:fixed;inset:0;background:rgba(13,27,61,.5);display:none;align-items:center;justify-content:center;padding:20px;z-index:80}
+.modal-bg.shown{display:flex}
+.modal-card{background:#fff;border-radius:14px;max-width:420px;width:100%;padding:30px 28px;box-shadow:0 24px 70px rgba(0,0,0,.3);position:relative;animation:entra .18s ease}
+.modal-card h3{font-family:var(--serif);font-size:23px;color:var(--azul);margin-bottom:6px}
+.modal-sub{color:var(--cinza);font-size:13.5px;margin-bottom:16px}
+.modal-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:20px;color:var(--cinza);cursor:pointer;line-height:1;padding:4px}
+.modal-close:hover{color:var(--vermelho)}
+.toast{position:fixed;bottom:22px;right:22px;left:auto;max-width:min(360px,calc(100vw - 32px));background:var(--azul);color:#fff;padding:13px 20px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.3);font-size:13.5px;z-index:90;opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none}
+.toast.show{opacity:1;transform:none}
+.toast.err{background:var(--vermelho)} .toast.ok{background:var(--verde)}
+.copiar-btn{background:none;border:1px solid var(--cinza-3);border-radius:7px;padding:5px 12px;font-family:var(--sans);font-size:12px;font-weight:600;color:var(--azul);cursor:pointer;margin-left:8px;vertical-align:middle}
+.copiar-btn:hover{border-color:var(--dourado)}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="uff"><strong>Universidade Federal Fluminense</strong>Escola de Enfermagem Aurora de Afonso Costa – EEAAC</div>
+  <div style="text-align:right">
+    <div class="ppea">PPEA · PORTAL DO DISCENTE</div>
+    <a class="voltar" href="index.html">← portal PPEA</a>
+  </div>
+</header>
+<div id="faixa-sistema"></div>
+
+<div class="tabbar" role="tablist">
+  <button class="tab-btn on" data-tab="banca" onclick="mudarAba('banca')">📋 Marcar Banca</button>
+  <button class="tab-btn" data-tab="externo" onclick="mudarAba('externo')">🎓 Cadastro de Participante Externo</button>
+  <button class="tab-btn" data-tab="consulta" onclick="mudarAba('consulta')">🔎 Consultar Protocolo</button>
+</div>
+
+<div class="wrap">
+
+  <!-- ══════════════════ ABA: MARCAR BANCA ══════════════════ -->
+  <div id="pane-banca">
+    <div class="crumb" id="crumb"></div>
+
+    <section class="card" id="step-1">
+      <div class="steps-label">Passo 1 de 4</div>
+      <div class="steps"><div class="dot on"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      <div class="center"><span class="pill">PROGRAMA PROFISSIONAL EM ENFERMAGEM ASSISTENCIAL</span></div>
+      <h1 style="margin-top:18px">Solicitação de Banca</h1>
+      <p class="lede">Selecione a modalidade para iniciar o preenchimento.</p>
+      <div class="choices">
+        <div class="choice" data-modalidade="mestrado" tabindex="0" role="button" aria-label="Mestrado — Dissertação ou Projeto, MPEA">
+          <div class="icon"><svg viewBox="0 0 24 24"><path d="M12 3 1 9l11 6 9-4.91V17h2V9zM5 13.18v4L12 21l7-3.82v-4L12 17z"/></svg></div>
+          <h3>Mestrado</h3><p>Dissertação / Projeto · MPEA</p>
+        </div>
+        <div class="choice" data-modalidade="doutorado" tabindex="0" role="button" aria-label="Doutorado — Tese ou Qualificação, PPEA">
+          <div class="icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h6"/></svg></div>
+          <h3>Doutorado</h3><p>Tese / Qualificação · PPEA</p>
+        </div>
+      </div>
+      <div class="regras-box">
+        <b>Antes de começar, confira as regras essenciais:</b>
+        <ul>
+          <li>Antecedência mínima de <b>15 dias corridos</b> da data da banca.</li>
+          <li>Todos os membros (titulares e suplentes) devem ter <b>titulação de Doutor</b>.</li>
+          <li>Mestrado: <b>5 membros</b> (3 titulares + 2 suplentes). Doutorado: <b>7 membros</b> (5 titulares + 2 suplentes).</li>
+          <li>Título do trabalho <b>sem caixa alta</b>.</li>
+          <li>Após a <b>aprovação</b> pela secretaria/avaliador, os documentos (convite, ata, declarações) são emitidos e enviados em até <b>2 dias</b>.</li>
+        </ul>
+      </div>
+      <p class="footer-link"><a href="#" id="link-correcao">Corrigir solicitação devolvida →</a></p>
+    </section>
+
+    <section class="card hidden" id="step-2">
+      <div class="steps-label">Passo 2 de 4</div>
+      <div class="steps"><div class="dot on clicavel" tabindex="0" role="button" aria-label="Voltar ao passo 1 — modalidade" onclick="voltarPara(1)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();voltarPara(1)}"></div><div class="dot on"></div><div class="dot"></div><div class="dot"></div></div>
+      <h2 id="titulo-turmas">Selecione sua turma</h2>
+      <p style="color:var(--cinza);margin-bottom:8px">Apenas turmas ativas são exibidas.</p>
+      <div id="msg-turmas"></div>
+      <div class="list" id="lista-turmas"></div>
+      <div class="actions"><button class="btn btn-ghost" onclick="voltarPara(1)">← Voltar</button></div>
+    </section>
+
+    <section class="card hidden" id="step-3">
+      <div class="steps-label">Passo 3 de 4</div>
+      <div class="steps"><div class="dot on clicavel" tabindex="0" role="button" aria-label="Voltar ao passo 1 — modalidade" onclick="voltarPara(1)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();voltarPara(1)}"></div><div class="dot on clicavel" tabindex="0" role="button" aria-label="Voltar ao passo 2 — turma" onclick="voltarPara(2)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();voltarPara(2)}"></div><div class="dot on"></div><div class="dot"></div></div>
+      <h2 id="titulo-alunos">Selecione seu nome</h2>
+      <p style="color:var(--cinza);margin-bottom:8px">Encontre seu cadastro na lista da turma.</p>
+      <div class="field" style="max-width:340px;margin-top:12px"><input type="text" id="busca-aluno" placeholder="Digite parte do seu nome…" oninput="filtrarAlunos()"></div>
+      <div id="msg-alunos"></div>
+      <div class="list" id="lista-alunos"></div>
+      <div class="actions"><button class="btn btn-ghost" onclick="voltarPara(2)">← Voltar</button></div>
+    </section>
+
+    <section class="card hidden" id="step-4">
+      <div class="crumb" id="crumb-4"></div>
+      <h2>Solicitação de Banca <span class="pill" id="pill-modalidade" style="margin-left:8px"></span></h2>
+      <div class="section" style="margin-top:18px">
+        <div class="label-section">Tipo de Banca</div>
+        <div class="tipos">
+          <div class="tipo" data-tipo="defesa-projeto" tabindex="0" role="button" aria-label="Defesa de Projeto — apresentação inicial do projeto de pesquisa"><h4>Defesa de Projeto</h4><p>Apresentação inicial do projeto de pesquisa</p></div>
+          <div class="tipo" data-tipo="qualificacao" tabindex="0" role="button" aria-label="Exame de Qualificação — avaliação intermediária do trabalho"><h4>Exame de Qualificação</h4><p>Avaliação intermediária do trabalho</p></div>
+          <div class="tipo" data-tipo="defesa-final" tabindex="0" role="button" aria-label="Defesa Final — apresentação e defesa do trabalho final"><h4>Defesa Final</h4><p>Apresentação e defesa do trabalho final</p></div>
+        </div>
+      </div>
+      <div class="actions"><button class="btn btn-ghost" onclick="voltarPara(3)">← Voltar</button></div>
+    </section>
+
+    <section class="card hidden" id="step-5">
+      <div class="crumb" id="crumb-5"></div>
+      <h2>Solicitação de Banca <span class="pill" id="pill-tipo" style="margin-left:8px"></span></h2>
+      <div id="banner-correcao"></div>
+      <div id="banner-erro"></div>
+      <form id="form-banca" onsubmit="enviarFormulario(event)">
+        <div class="section">
+          <div class="label-section">Discente</div>
+          <div class="grid-2">
+            <div class="field"><label>Nome completo <span class="danger">*</span></label><input type="text" id="f-nome" required></div>
+            <div class="field"><label>Nº de matrícula</label><input type="text" id="f-matricula"></div>
+          </div>
+          <div class="grid-2">
+            <div class="field"><label>Orientador <span class="danger">*</span></label><input type="text" id="f-orientador" required></div>
+            <div class="field"><label>Coorientador</label><input type="text" id="f-coorientador" placeholder="Se houver"></div>
+          </div>
+          <div class="field"><label>E-mail do orientador <span class="hint">(recomendado — ele recebe um aviso para registrar a anuência da banca)</span></label><input type="email" id="f-email-orientador" placeholder="orientador@id.uff.br"></div>
+          <div class="field"><label>Título do trabalho <span class="danger">*</span> <span class="hint">(não usar caixa alta)</span></label><input type="text" id="f-titulo" required placeholder="Título da dissertação ou tese"></div>
+          <div class="field"><label>E-mail institucional do discente <span class="danger">*</span> <span class="hint">(@id.uff.br — recebe o protocolo)</span></label><input type="email" id="f-email" required placeholder="seu.email@id.uff.br"></div>
+        </div>
+
+        <div class="section">
+          <div class="label-section">Agendamento</div>
+          <div class="grid-3">
+            <div class="field"><label>Data agendada <span class="danger">*</span></label><input type="date" id="f-data" required onchange="checarPrazo()"></div>
+            <div class="field"><label>Hora <span class="danger">*</span></label><input type="time" id="f-hora" required></div>
+            <div class="field"><label>Local</label><input type="text" id="f-local" placeholder="Sala / link"></div>
+          </div>
+          <div id="aviso-prazo"></div>
+          <div class="field">
+            <label>Apresentação <span class="danger">*</span></label>
+            <div class="toggle" id="toggle-apresentacao">
+              <button type="button" data-val="online">Online</button>
+              <button type="button" data-val="presencial">Presencial</button>
+              <button type="button" data-val="misto">Misto</button>
+            </div>
+            <input type="hidden" id="f-apresentacao" required>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="label-section">Comissão Examinadora <span id="comissao-hint" style="color:var(--cinza);font-weight:400;text-transform:none;letter-spacing:0"></span></div>
+          <table class="comissao">
+            <thead><tr><th>Membro</th><th>Nome</th><th>PPG*</th><th>Instituição</th><th>E-mail</th></tr></thead>
+            <tbody id="tbody-comissao"></tbody>
+          </table>
+          <p class="hint" style="margin-top:10px">*PPG = Programa de Pós-Graduação onde o membro atua. Todos os membros devem ser Doutores. Membros externos ainda não cadastrados podem ser registrados na aba “Cadastro de Participante Externo”.</p>
+        </div>
+
+        <div class="section">
+          <div class="label-section">Produção bibliográfica do orientando (opcional)</div>
+          <div class="field"><label>Artigos publicados / aceitos durante o curso</label><textarea id="f-artigos" placeholder="Liste os artigos aqui…" rows="3"></textarea></div>
+        </div>
+
+        <div class="actions">
+          <button type="button" class="btn btn-ghost" onclick="voltarPara(4)">← Voltar</button>
+          <button type="submit" class="btn btn-primary" id="btn-enviar">📨 Enviar Solicitação</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card hidden" id="step-ok">
+      <div class="confirma">
+        <div class="check">✓</div>
+        <h2 style="text-align:center">Solicitação enviada</h2>
+        <p style="color:var(--cinza);margin-top:8px">Seu protocolo foi gerado e a secretaria foi notificada.</p>
+        <div class="protocolo" id="protocolo-num"></div>
+        <button type="button" class="copiar-btn" onclick="copiarProtocolo('protocolo-num')">⧉ Copiar número</button>
+        <div id="ok-aviso-prazo"></div>
+        <p style="color:var(--cinza);font-size:14px">Anote este número para futuras consultas.</p>
+        <div style="margin-top:24px"><button class="btn btn-primary" onclick="reiniciar()">Nova solicitação</button></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ══════════════════ ABA: CADASTRO DE PARTICIPANTE EXTERNO ══════════════════ -->
+  <div id="pane-externo" class="hidden">
+    <section class="card">
+      <h2 style="text-align:center;font-size:30px">Cadastro de Participante Externo</h2>
+      <p class="lede">Registro de membros externos para bancas do PPEA. Preencha os dados acadêmicos e anexe o diploma de doutorado.</p>
+
+      <div id="ext-form-wrap" style="margin-top:26px">
+        <div class="section">
+          <div class="label-section">1 · Identificação</div>
+          <div class="grid g2">
+            <div class="field" id="ef-nome" style="grid-column:1/-1"><label>Nome completo <span class="danger">*</span></label><input id="ext-nome" type="text" placeholder="Ex.: Maria Aparecida de Souza"></div>
+            <div class="field" id="ef-cpf"><label>CPF <span class="danger">*</span></label><input id="ext-cpf" type="text" inputmode="numeric" placeholder="000.000.000-00" maxlength="14"></div>
+            <div class="field" id="ef-email"><label>E-mail institucional</label><input id="ext-email" type="email" placeholder="nome@instituicao.edu.br"></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="label-section">2 · Titulação acadêmica <span style="color:var(--cinza);font-weight:400;text-transform:none;letter-spacing:0">— doutorado obrigatório para compor banca</span></div>
+          <div class="titul" id="titul">
+            <div class="thead"><div>Nível</div><div>Curso / Área</div><div>Instituição</div><div>Ano</div></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="label-section">3 · Vínculo institucional atual</div>
+          <div class="grid g2">
+            <div class="field" id="ef-inst"><label>Instituição de origem (IES) <span class="danger">*</span></label><input id="ext-inst" type="text" placeholder="Ex.: Universidade de São Paulo (USP)"></div>
+            <div class="field" id="ef-ppg"><label>Programa de Pós-Graduação <span class="danger">*</span></label><input id="ext-ppg" type="text" placeholder="Ex.: PPG em Enfermagem (EERP/USP)"></div>
+            <div class="field"><label>Cargo / função</label><input id="ext-cargo" type="text" placeholder="Ex.: Professor(a) Associado(a)"></div>
+            <div class="field"><label>Currículo Lattes (link)</label><input id="ext-lattes" type="url" placeholder="http://lattes.cnpq.br/…"></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="label-section">4 · Diploma de doutorado <span style="color:var(--cinza);font-weight:400;text-transform:none;letter-spacing:0">— PDF, JPG ou PNG · até 15 MB</span></div>
+          <label class="drop" id="drop" for="ext-file">
+            <div class="big">Arraste o arquivo ou clique para selecionar</div>
+            <div class="sub">Anexado apenas para conferência da secretaria (versão visual: fica salvo só nesta sessão)</div>
+            <input id="ext-file" type="file" accept=".pdf,.jpg,.jpeg,.png">
+          </label>
+          <div class="filechip" id="chip"><div class="fn" id="chipName">—</div><button class="rm" type="button" onclick="clearFile()">&times;</button></div>
+        </div>
+
+        <div class="actions">
+          <p class="hint" style="max-width:44ch">Coletamos apenas CPF, titulação e vínculo — minimização de dados (LGPD).</p>
+          <button class="btn btn-primary" id="ext-submit" onclick="enviarExterno()">Registrar cadastro</button>
+        </div>
+      </div>
+
+      <div class="confirma hidden" id="ext-success">
+        <div class="check">✓</div>
+        <h2 style="text-align:center">Cadastro registrado</h2>
+        <div class="protocolo" id="ext-proto">PPEA-EXT-…</div>
+        <button type="button" class="copiar-btn" onclick="copiarProtocolo('ext-proto')">⧉ Copiar número</button>
+        <p style="color:var(--cinza)">Nome: <b id="ext-rc-nome"></b> · Instituição: <b id="ext-rc-inst"></b></p>
+        <div style="margin-top:24px"><button class="btn btn-ghost" onclick="novoCadastroExterno()">Novo cadastro</button></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Consultar cadastro por CPF</h2>
+      <div class="consulta-row" style="margin-top:14px">
+        <div class="field" id="ef-qcpf"><label>CPF do participante</label><input id="ext-qcpf" type="text" inputmode="numeric" placeholder="000.000.000-00" maxlength="14" onkeydown="if(event.key==='Enter')buscarExterno()"></div>
+        <button class="btn btn-primary" onclick="buscarExterno()">Buscar</button>
+      </div>
+      <div id="ext-resultado" style="margin-top:18px"></div>
+    </section>
+  </div>
+
+  <!-- ══════════════════ ABA: CONSULTA DE PROTOCOLO ══════════════════ -->
+  <div id="pane-consulta" class="hidden">
+    <section class="card">
+      <h2>Consultar protocolo de banca</h2>
+      <p class="hint" style="margin-top:6px">Por segurança, a consulta pede o protocolo <b>e</b> a sua matrícula — assim ninguém consegue ver a situação de bancas de outras pessoas.</p>
+      <div class="grid-2" style="max-width:640px;margin-top:14px">
+        <div class="field"><label>Número do protocolo</label><input type="text" id="f-protocolo" placeholder="PPEA-2026-0001" onkeydown="if(event.key==='Enter')consultarProtocolo()"></div>
+        <div class="field"><label>Sua matrícula</label><input type="text" id="f-protocolo-matricula" placeholder="Somente números" onkeydown="if(event.key==='Enter')consultarProtocolo()"></div>
+      </div>
+      <div class="actions" style="justify-content:flex-start">
+        <button class="btn btn-primary" onclick="consultarProtocolo()">Consultar</button>
+      </div>
+      <div id="resultado-consulta" style="margin-top:18px"></div>
+    </section>
+  </div>
+
+</div>
+
+<!-- Modal leve para correção de solicitação devolvida -->
+<div class="modal-bg" id="modal-correcao" role="dialog" aria-modal="true" aria-labelledby="modal-correcao-titulo">
+  <div class="modal-card">
+    <button class="modal-close" type="button" onclick="fecharModalCorrecao()" aria-label="Fechar">&times;</button>
+    <h3 id="modal-correcao-titulo">Corrigir solicitação devolvida</h3>
+    <p class="modal-sub">Informe o número do protocolo devolvido pela secretaria e a sua matrícula.</p>
+    <div id="modal-correcao-erro"></div>
+    <div class="field"><label>Número do protocolo</label><input type="text" id="modal-correcao-proto" placeholder="PPEA-2026-0001" onkeydown="if(event.key==='Enter')confirmarCorrecao()"></div>
+    <div class="field"><label>Sua matrícula</label><input type="text" id="modal-correcao-matricula" placeholder="Somente números" onkeydown="if(event.key==='Enter')confirmarCorrecao()"></div>
+    <div class="actions">
+      <button class="btn btn-ghost" type="button" onclick="fecharModalCorrecao()">Cancelar</button>
+      <button class="btn btn-primary" type="button" onclick="confirmarCorrecao()">Continuar</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const PRAZO_DIAS = DB.PRAZO_DIAS;
+const estado = { modalidade:null, turma:null, aluno:null, tipo:null, turmasCache:[], alunosCache:[] };
+const CORRECAO = { ativo:false, protocolo:null, matricula:null };
+let formSujo=false; // true quando o discente já digitou algo no formulário de banca nesta sessão — usado para avisar antes de sair sem salvar
+let toastT;
+function toast(msg,tipo){ const t=document.getElementById('toast'); if(!t) return; t.textContent=msg; t.className='toast show '+(tipo||''); clearTimeout(toastT); toastT=setTimeout(()=>{ t.className='toast'; },3200); }
+const TIPOS_LABEL = DB.TIPOS_LABEL, STATUS_LABEL = DB.STATUS_LABEL, COMISSAO = DB.COMISSAO;
+
+/* ───────── Acessibilidade: ativação por teclado (Enter/Espaço) em elementos clicáveis ───────── */
+function ativavelPorTeclado(el){
+  if(!el.hasAttribute('tabindex')) el.setAttribute('tabindex','0');
+  if(!el.hasAttribute('role')) el.setAttribute('role','button');
+  el.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){ e.preventDefault(); el.click(); } });
+}
+
+/* ───────── Abas do portal ───────── */
+function mudarAba(tab){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
+  ['banca','externo','consulta'].forEach(t=>document.getElementById('pane-'+t).classList.toggle('hidden', t!==tab));
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ───────── Navegação do wizard de banca ───────── */
+function mostrar(id){
+  document.querySelectorAll('#pane-banca section.card').forEach(s=>s.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+  // Os passos 4 e 5 já exibem sua própria trilha (crumb-4/crumb-5) dentro do card;
+  // escondemos a trilha externa nesses passos para não duplicar a informação.
+  document.getElementById('crumb').classList.toggle('hidden', id==='step-4'||id==='step-5');
+  window.scrollTo({top:0,behavior:'smooth'}); atualizarCrumb();
+}
+function voltarPara(n){
+  if(n===1){estado.modalidade=estado.turma=estado.aluno=estado.tipo=null;}
+  if(n===2){estado.turma=estado.aluno=estado.tipo=null;}
+  if(n===3){estado.aluno=estado.tipo=null;}
+  if(n===4){estado.tipo=null;}
+  mostrar('step-'+n);
+  if(n===2) carregarTurmas(); if(n===3) carregarAlunos();
+}
+function reiniciar(){ estado.modalidade=estado.turma=estado.aluno=estado.tipo=null; CORRECAO.ativo=false; CORRECAO.protocolo=null; CORRECAO.matricula=null; formSujo=false; document.getElementById('banner-correcao').innerHTML=''; mostrar('step-1'); }
+function atualizarCrumb(){
+  const p=['<a href="#" onclick="reiniciar();return false">← Início</a>'];
+  if(estado.modalidade) p.push('<span class="sep">/</span>'+(estado.modalidade==='mestrado'?'Mestrado':'Doutorado'));
+  if(estado.turma) p.push('<span class="sep">/</span>'+estado.turma.nome);
+  if(estado.aluno) p.push('<span class="sep">/</span>'+estado.aluno.nome);
+  const html=p.join(' ');
+  document.getElementById('crumb').innerHTML=html;
+  const c4=document.getElementById('crumb-4'); if(c4) c4.innerHTML=html;
+  const c5=document.getElementById('crumb-5'); if(c5) c5.innerHTML=html;
+}
+
+document.querySelectorAll('.choice').forEach(el=>{ el.addEventListener('click',()=>{ estado.modalidade=el.dataset.modalidade; mostrar('step-2'); carregarTurmas(); }); ativavelPorTeclado(el); });
+
+/* Avisa antes de sair da página se houver dados digitados no formulário de banca ainda não enviados */
+document.getElementById('form-banca').addEventListener('input',()=>{ formSujo=true; });
+window.addEventListener('beforeunload',e=>{
+  if(formSujo && !document.getElementById('step-5').classList.contains('hidden')){ e.preventDefault(); e.returnValue=''; return ''; }
+});
+document.getElementById('link-correcao').addEventListener('click',e=>{
+  e.preventDefault();
+  abrirModalCorrecao();
+});
+
+/* ───────── Modal: corrigir solicitação devolvida (substitui prompt()/alert()) ───────── */
+function abrirModalCorrecao(){
+  document.getElementById('modal-correcao-erro').innerHTML='';
+  document.getElementById('modal-correcao-proto').value='';
+  document.getElementById('modal-correcao-matricula').value='';
+  document.getElementById('modal-correcao').classList.add('shown');
+  setTimeout(()=>document.getElementById('modal-correcao-proto').focus(),50);
+}
+function fecharModalCorrecao(){ document.getElementById('modal-correcao').classList.remove('shown'); }
+document.getElementById('modal-correcao').addEventListener('click',e=>{ if(e.target.id==='modal-correcao') fecharModalCorrecao(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&document.getElementById('modal-correcao').classList.contains('shown')) fecharModalCorrecao(); });
+async function confirmarCorrecao(){
+  const proto=document.getElementById('modal-correcao-proto').value.trim();
+  const matricula=document.getElementById('modal-correcao-matricula').value.trim();
+  const erro=document.getElementById('modal-correcao-erro');
+  if(!proto){ erro.innerHTML='<div class="banner-erro">Informe o número do protocolo.</div>'; return; }
+  if(!matricula){ erro.innerHTML='<div class="banner-erro">Informe sua matrícula.</div>'; return; }
+  erro.innerHTML='<p class="hint">Consultando…</p>';
+  const j=await DB.buscarParaCorrecao(proto, matricula);
+  if(!j.ok){ erro.innerHTML='<div class="banner-erro">'+DB.escapeHtml(j.erro||'Não foi possível localizar a solicitação.')+'</div>'; return; }
+  erro.innerHTML='';
+  fecharModalCorrecao();
+  iniciarCorrecao(j.banca, matricula);
+}
+
+function iniciarCorrecao(b, matricula){
+  document.getElementById('crumb').innerHTML='';
+  if(!b) return;
+  CORRECAO.ativo=true; CORRECAO.protocolo=b.protocolo; CORRECAO.matricula=matricula||b.matricula;
+  estado.modalidade=b.modalidade; estado.tipo=b.tipoBanca;
+  estado.turma={ id:b.turmaId, nome:b.turmaNome||'' };
+  estado.aluno={ id:b.alunoId, nome:b.nome, matricula:b.matricula, orientador:b.orientador, coorientador:b.coorientador, email:b.email };
+  document.getElementById('pill-tipo').textContent='CORREÇÃO · '+(TIPOS_LABEL[b.tipoBanca]||b.tipoBanca).toUpperCase();
+  preencherFormulario();
+  document.getElementById('f-titulo').value=b.titulo||'';
+  document.getElementById('f-email').value=b.email||'';
+  document.getElementById('f-email-orientador').value=b.orientadorEmail||'';
+  document.getElementById('f-data').value=b.data||''; document.getElementById('f-hora').value=b.hora||'';
+  document.getElementById('f-local').value=b.local||''; document.getElementById('f-artigos').value=b.artigos||'';
+  if(b.apresentacao){ document.querySelectorAll('#toggle-apresentacao button').forEach(x=>{ x.classList.toggle('on',x.dataset.val===b.apresentacao); }); document.getElementById('f-apresentacao').value=b.apresentacao; }
+  (b.comissao||[]).forEach((m,i)=>{
+    const tr=document.querySelectorAll('#tbody-comissao tr')[i]; if(!tr) return;
+    const set=(c,v)=>{ const inp=tr.querySelector('input[data-c="'+c+'"]'); if(inp) inp.value=v||''; };
+    set('nome',m.nome); set('ppg',m.ppg); set('inst',m.instituicao); set('email',m.email);
+  });
+  checarPrazo();
+  document.getElementById('banner-correcao').innerHTML=
+    '<div class="banner-aviso"><b>Modo correção — protocolo '+DB.escapeHtml(b.protocolo)+'</b><br>O que foi apontado pelo avaliador: '+DB.escapeHtml(b.observacao||'—')+'<br>Ajuste apenas o necessário e reenvie. O protocolo será mantido.</div>';
+  mostrar('step-5');
+}
+
+async function carregarTurmas(){
+  const lista=document.getElementById('lista-turmas'); const msg=document.getElementById('msg-turmas');
+  msg.innerHTML='';
+  document.getElementById('titulo-turmas').textContent='Selecione sua turma — '+(estado.modalidade==='mestrado'?'Mestrado':'Doutorado');
+  lista.innerHTML='<p class="empty">Carregando turmas…</p>';
+  const j=await DB.listarTurmas(estado.modalidade);
+  if(!j.ok){ lista.innerHTML='<div class="banner-erro">'+DB.escapeHtml(j.erro||'Não foi possível carregar as turmas.')+'</div>'; return; }
+  const turmas=j.turmas||[]; estado.turmasCache=turmas;
+  if(!turmas.length){ lista.innerHTML='<p class="empty">Nenhuma turma ativa no momento. Entre em contato com a secretaria.</p>'; return; }
+  lista.innerHTML='';
+  turmas.forEach(t=>{
+    const d=document.createElement('div'); d.className='row'; d.setAttribute('aria-label','Selecionar turma '+t.nome);
+    d.innerHTML='<div><div class="ttl">'+DB.escapeHtml(t.nome)+'</div></div><div class="arr">→</div>';
+    d.onclick=()=>{ estado.turma=t; mostrar('step-3'); carregarAlunos(); };
+    ativavelPorTeclado(d);
+    lista.appendChild(d);
+  });
+}
+
+async function carregarAlunos(){
+  const lista=document.getElementById('lista-alunos'), busca=document.getElementById('busca-aluno');
+  busca.value='';
+  document.getElementById('titulo-alunos').textContent='Selecione seu nome — '+estado.turma.nome;
+  if(!DB.listaAlunosPublica()){
+    busca.placeholder='Digite ao menos 3 letras do seu nome…';
+    lista.innerHTML='<p class="empty">Digite ao menos 3 letras do seu nome para localizar seu cadastro.</p>';
+    estado.alunosCache=[];
+    return;
+  }
+  lista.innerHTML='<p class="empty">Carregando…</p>';
+  const j=await DB.listarAlunos(estado.turma.id);
+  if(!j.ok){ lista.innerHTML='<div class="banner-erro">'+DB.escapeHtml(j.erro||'Não foi possível carregar a lista.')+'</div>'; return; }
+  estado.alunosCache=(j.alunos||[]).sort((a,b)=>a.nome.localeCompare(b.nome));
+  renderAlunos(estado.alunosCache);
+}
+function renderAlunos(arr){
+  const lista=document.getElementById('lista-alunos');
+  if(!arr.length){ lista.innerHTML='<p class="empty">Nenhum discente encontrado. Procure a secretaria se seu nome não aparece.</p>'; return; }
+  lista.innerHTML='';
+  arr.forEach(a=>{
+    const d=document.createElement('div'); d.className='row'; d.setAttribute('aria-label','Selecionar aluno '+a.nome);
+    d.innerHTML='<div><div class="ttl">'+DB.escapeHtml(a.nome)+'</div><div class="meta">Matrícula: '+DB.escapeHtml(a.matricula||'—')+' · Orientador: '+DB.escapeHtml(a.orientador||'—')+'</div></div><div class="arr">→</div>';
+    d.onclick=()=>{ estado.aluno=a; document.getElementById('pill-modalidade').textContent=(estado.modalidade==='mestrado'?'MESTRADO':'DOUTORADO'); mostrar('step-4'); };
+    ativavelPorTeclado(d);
+    lista.appendChild(d);
+  });
+}
+const filtrarAlunos = DB.debounce(async function(){
+  const q=document.getElementById('busca-aluno').value.trim();
+  if(DB.listaAlunosPublica()){
+    const ql=q.toLowerCase();
+    renderAlunos(ql?estado.alunosCache.filter(a=>a.nome.toLowerCase().includes(ql)):estado.alunosCache);
+    return;
+  }
+  const lista=document.getElementById('lista-alunos');
+  if(q.length<3){ lista.innerHTML='<p class="empty">Digite ao menos 3 letras do seu nome para localizar seu cadastro.</p>'; return; }
+  lista.innerHTML='<p class="empty">Procurando…</p>';
+  const j=await DB.listarAlunos(estado.turma.id, q);
+  if(!j.ok){ lista.innerHTML='<div class="banner-erro">'+DB.escapeHtml(j.erro||'Falha na busca.')+'</div>'; return; }
+  estado.alunosCache=j.alunos||[];
+  renderAlunos(estado.alunosCache);
+}, 300);
+
+document.querySelectorAll('.tipo').forEach(el=>{
+  el.addEventListener('click',()=>{
+    estado.tipo=el.dataset.tipo;
+    document.getElementById('pill-tipo').textContent=TIPOS_LABEL[estado.tipo].toUpperCase();
+    preencherFormulario(); mostrar('step-5');
+  });
+  ativavelPorTeclado(el);
+});
+
+function preencherFormulario(){
+  const a=estado.aluno;
+  document.getElementById('f-nome').value=a.nome||'';
+  document.getElementById('f-matricula').value=a.matricula||'';
+  document.getElementById('f-orientador').value=a.orientador||'';
+  document.getElementById('f-coorientador').value=a.coorientador||'';
+  document.getElementById('f-titulo').value='';
+  document.getElementById('f-email').value=a.email||'';
+  document.getElementById('f-email-orientador').value='';
+  if(!CORRECAO.ativo) document.getElementById('banner-correcao').innerHTML='';
+  document.getElementById('f-data').value=''; document.getElementById('f-hora').value='';
+  document.getElementById('f-local').value=''; document.getElementById('f-apresentacao').value='';
+  document.getElementById('f-artigos').value=''; document.getElementById('aviso-prazo').innerHTML='';
+  document.querySelectorAll('#toggle-apresentacao button').forEach(b=>b.classList.remove('on'));
+
+  const linhas=COMISSAO[estado.modalidade];
+  document.getElementById('comissao-hint').textContent=' — '+(estado.modalidade==='doutorado'?'7 membros (5 titulares + 2 suplentes)':'5 membros (3 titulares + 2 suplentes)');
+  const tbody=document.getElementById('tbody-comissao');
+  tbody.innerHTML=linhas.map((l,i)=>(
+    '<tr>'+
+      '<td data-l="Membro" class="role"><strong>'+l.role+'</strong>'+(l.sub?'<small>'+l.sub+'</small>':'')+'</td>'+
+      '<td data-l="Nome"><input type="text" data-c="nome" data-i="'+i+'" placeholder="Nome" value="'+(i===0?DB.escapeHtml(a.orientador||''):'')+'"></td>'+
+      '<td data-l="PPG"><input type="text" data-c="ppg" data-i="'+i+'" placeholder="PPG" value="'+(i===0?'PPEA/UFF':'')+'"></td>'+
+      '<td data-l="Instituição"><input type="text" data-c="inst" data-i="'+i+'" placeholder="Instituição" value="'+DB.escapeHtml(l.inst)+'"></td>'+
+      '<td data-l="E-mail"><input type="email" data-c="email" data-i="'+i+'" placeholder="e-mail"></td>'+
+    '</tr>'
+  )).join('');
+  formSujo=false;
+}
+
+function checarPrazo(){
+  const v=document.getElementById('f-data').value; const box=document.getElementById('aviso-prazo');
+  if(!v){ box.innerHTML=''; return; }
+  const dias=DB.diasCorridosAte(v);
+  if(dias<0){ box.innerHTML='<div class="banner-erro">A data informada já passou.</div>'; }
+  else if(dias<PRAZO_DIAS){ box.innerHTML='<div class="banner-aviso">⚠ Faltam apenas <b>'+dias+' dia(s)</b> para a data. O regimento exige <b>'+PRAZO_DIAS+' dias corridos</b> de antecedência. Solicitações fora do prazo podem não ser aprovadas.</div>'; }
+  else { box.innerHTML='<div class="banner-info">✓ Antecedência de '+dias+' dias — dentro do prazo regimental.</div>'; }
+}
+
+document.querySelectorAll('#toggle-apresentacao button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#toggle-apresentacao button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); document.getElementById('f-apresentacao').value=b.dataset.val;
+}));
+
+async function enviarFormulario(ev){
+  ev.preventDefault();
+  const banner=document.getElementById('banner-erro'); banner.innerHTML='';
+  const apres=document.getElementById('f-apresentacao').value;
+  if(!apres){ banner.innerHTML='<div class="banner-erro">Selecione a modalidade de apresentação (Online, Presencial ou Misto).</div>'; window.scrollTo({top:0,behavior:'smooth'}); return; }
+
+  const linhas=COMISSAO[estado.modalidade];
+  const comissao=[];
+  document.querySelectorAll('#tbody-comissao tr').forEach((tr,idx)=>{
+    const get=c=>tr.querySelector('input[data-c="'+c+'"]').value.trim();
+    comissao.push({ papel:linhas[idx].role, nome:get('nome'), ppg:get('ppg'), instituicao:get('inst'), email:get('email') });
+  });
+
+  const registro={
+    alunoId:estado.aluno.id, turmaId:estado.turma.id, modalidade:estado.modalidade, tipoBanca:estado.tipo,
+    nome:document.getElementById('f-nome').value.trim(), matricula:document.getElementById('f-matricula').value.trim(),
+    orientador:document.getElementById('f-orientador').value.trim(), coorientador:document.getElementById('f-coorientador').value.trim(),
+    orientadorEmail:document.getElementById('f-email-orientador').value.trim(),
+    titulo:document.getElementById('f-titulo').value.trim(), email:document.getElementById('f-email').value.trim(),
+    data:document.getElementById('f-data').value, hora:document.getElementById('f-hora').value,
+    local:document.getElementById('f-local').value.trim(), apresentacao:apres,
+    artigos:document.getElementById('f-artigos').value.trim(), comissao:comissao
+  };
+
+  const errosLocais = DB.validarBanca(registro);
+  if(errosLocais.length){
+    banner.innerHTML='<div class="banner-erro"><b>Corrija os itens abaixo:</b><ul style="margin:6px 0 0 18px">'+errosLocais.map(e=>'<li>'+DB.escapeHtml(e)+'</li>').join('')+'</ul></div>';
+    window.scrollTo({top:0,behavior:'smooth'}); return;
+  }
+
+  const btn=document.getElementById('btn-enviar'); btn.disabled=true; btn.textContent='Enviando…';
+  const j = CORRECAO.ativo
+    ? await DB.corrigirBanca(CORRECAO.protocolo, CORRECAO.matricula, registro)
+    : await DB.criarBanca(registro);
+  btn.disabled=false; btn.textContent='📨 Enviar Solicitação';
+  if(j.ok){
+    document.getElementById('protocolo-num').textContent=j.banca.protocolo;
+    let avisos='';
+    if(j.foraDoPrazo) avisos+='<div class="banner-aviso" style="text-align:left;max-width:520px;margin:14px auto">⚠ Esta solicitação está <b>fora do prazo de '+PRAZO_DIAS+' dias</b> e pode não ser aprovada pelo avaliador.</div>';
+    if(j.status==='aguardando-orientador') avisos+='<div class="banner-info" style="text-align:left;max-width:520px;margin:14px auto">Seu orientador precisa registrar a <b>anuência</b> antes da análise. A secretaria dará sequência após essa etapa.</div>';
+    if(CORRECAO.ativo) avisos='<div class="banner-info" style="text-align:left;max-width:520px;margin:14px auto">✓ Correção reenviada com sucesso — o protocolo foi mantido.</div>'+avisos;
+    document.getElementById('ok-aviso-prazo').innerHTML=avisos;
+    CORRECAO.ativo=false; CORRECAO.protocolo=null; CORRECAO.matricula=null; formSujo=false; document.getElementById('banner-correcao').innerHTML='';
+    mostrar('step-ok');
+  } else if(j.erros){
+    banner.innerHTML='<div class="banner-erro"><b>Corrija os itens abaixo:</b><ul style="margin:6px 0 0 18px">'+j.erros.map(e=>'<li>'+DB.escapeHtml(e)+'</li>').join('')+'</ul></div>';
+    window.scrollTo({top:0,behavior:'smooth'});
+  } else {
+    banner.innerHTML='<div class="banner-erro">'+DB.escapeHtml(j.erro||'Não foi possível enviar a solicitação. Tente novamente em alguns instantes.')+'</div>';
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+}
+
+function copiarProtocolo(id){
+  const texto=(document.getElementById(id).textContent||'').trim();
+  DB.copiarTexto(texto).then(ok=>toast(ok?'Protocolo copiado: '+texto:'Não foi possível copiar — selecione o número manualmente.', ok?'ok':'err'));
+}
+
+/* ───────── Consulta de protocolo ───────── */
+async function consultarProtocolo(){
+  const num=document.getElementById('f-protocolo').value.trim();
+  const mat=document.getElementById('f-protocolo-matricula').value.trim();
+  const out=document.getElementById('resultado-consulta');
+  if(!num){ out.innerHTML='<div class="banner-erro">Informe um protocolo.</div>'; return; }
+  if(!mat){ out.innerHTML='<div class="banner-erro">Informe sua matrícula.</div>'; return; }
+  out.innerHTML='<p class="empty">Consultando…</p>';
+  const r=await DB.consultarProtocolo(num, mat);
+  if(!r.ok){ out.innerHTML='<div class="banner-erro">'+DB.escapeHtml(r.erro||'Protocolo não encontrado.')+'</div>'; return; }
+  const j=r.banca;
+  const status=j.status||'pendente';
+  const cores={aprovada:'#15803d',realizada:'#0d1b3d',cancelada:'#b91c1c',devolvida:'#7c2d12','aguardando-orientador':'#075985',pendente:'#a16207'};
+  const cor=cores[status]||'#a16207';
+  out.innerHTML='<div class="section"><div class="label-section">Protocolo '+DB.escapeHtml(j.protocolo)+'</div>'+
+    '<p><strong>Tipo:</strong> '+DB.escapeHtml(TIPOS_LABEL[j.tipoBanca]||j.tipoBanca)+'</p>'+
+    '<p><strong>Discente:</strong> '+DB.escapeHtml(j.nome)+'</p>'+
+    '<p><strong>Data:</strong> '+DB.escapeHtml(DB.fData(j.data)||'—')+' às '+DB.escapeHtml(j.hora||'—')+'</p>'+
+    '<p><strong>Apresentação:</strong> '+DB.escapeHtml(j.apresentacao||'—')+'</p>'+
+    '<p><strong>Status:</strong> <span style="color:'+cor+';font-weight:600">'+DB.escapeHtml((STATUS_LABEL[status]||status)).toUpperCase()+'</span></p>'+
+    (j.observacao?'<p><strong>Observação do avaliador:</strong> '+DB.escapeHtml(j.observacao)+'</p>':'')+
+    (status==='aprovada'?'<p style="color:var(--verde);margin-top:6px">✓ Banca aprovada. A secretaria emite e envia os documentos em até '+DB.PRAZO_DOCS_DIAS+' dias.</p>':'')+
+    (status==='devolvida'?'<div class="banner-aviso" style="margin-top:10px">Esta solicitação foi devolvida (não aprovada). Use a opção “Corrigir solicitação devolvida” na aba Marcar Banca, informando este protocolo.</div>':'')+'</div>';
+}
+
+/* ══════════════════ CADASTRO DE PARTICIPANTE EXTERNO ══════════════════ */
+const NIVEIS = [
+  {id:'grad', nome:'Graduação'}, {id:'esp',  nome:'Especialização'}, {id:'mest', nome:'Mestrado'},
+  {id:'dout', nome:'Doutorado', obg:true}, {id:'posd', nome:'Pós-Doutorado'}
+];
+(function buildTitul(){
+  const wrap=document.getElementById('titul');
+  NIVEIS.forEach(n=>{
+    const row=document.createElement('div');
+    row.className='trow'+(n.obg?' key':'');
+    row.innerHTML='<div class="lvl">'+n.nome+(n.obg?'<span class="star">◆</span>':'')+'</div>'+
+      '<div class="cell" data-lbl="Curso / Área"><input data-f="'+n.id+'-curso" type="text" placeholder="—"></div>'+
+      '<div class="cell" data-lbl="Instituição"><input data-f="'+n.id+'-inst" type="text" placeholder="—"></div>'+
+      '<div class="cell" data-lbl="Ano"><input data-f="'+n.id+'-ano" type="text" inputmode="numeric" maxlength="4" placeholder="Ano"></div>';
+    wrap.appendChild(row);
+  });
+})();
+
+function onlyDigits(s){return (s||'').replace(/\D/g,'')}
+function maskCPF(v){ v=onlyDigits(v).slice(0,11); return v.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2'); }
+function validaCPF(cpf){
+  cpf=onlyDigits(cpf);
+  if(cpf.length!==11 || /^(\d)\1{10}$/.test(cpf)) return false;
+  let s=0; for(let i=0;i<9;i++) s+=+cpf[i]*(10-i);
+  let d1=(s*10)%11; if(d1===10) d1=0; if(d1!==+cpf[9]) return false;
+  s=0; for(let i=0;i<10;i++) s+=+cpf[i]*(11-i);
+  let d2=(s*10)%11; if(d2===10) d2=0; return d2===+cpf[10];
+}
+['ext-cpf','ext-qcpf'].forEach(id=>{ const el=document.getElementById(id); el.addEventListener('input',()=>{el.value=maskCPF(el.value)}); });
+
+let extFileData=null;
+const drop=document.getElementById('drop'), extFileInput=document.getElementById('ext-file');
+['dragenter','dragover'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('drag')}));
+['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('drag')}));
+drop.addEventListener('drop',ev=>{ if(ev.dataTransfer.files[0]) handleExtFile(ev.dataTransfer.files[0]); });
+extFileInput.addEventListener('change',()=>{ if(extFileInput.files[0]) handleExtFile(extFileInput.files[0]); });
+const TIPOS_ACEITOS=['application/pdf','image/jpeg','image/png'];
+function handleExtFile(f){
+  if(f.size>8*1024*1024){ toast('Arquivo acima de 8 MB — escolha um arquivo menor.','err'); return; }
+  if(TIPOS_ACEITOS.indexOf(f.type)<0){ toast('Formato não aceito. Envie PDF, JPG ou PNG.','err'); return; }
+  const leitor=new FileReader();
+  leitor.onload=()=>{
+    extFileData={ nome:f.name, tipo:f.type, tamanho:f.size, conteudo:String(leitor.result).split(',')[1] };
+    document.getElementById('chipName').textContent=f.name;
+    document.getElementById('chip').classList.add('show'); drop.style.display='none';
+  };
+  leitor.onerror=()=>toast('Não foi possível ler o arquivo. Tente novamente.','err');
+  leitor.readAsDataURL(f);
+}
+function clearFile(){ extFileData=null; extFileInput.value=''; document.getElementById('chip').classList.remove('show'); drop.style.display=''; }
+
+function getVal(id){ return document.getElementById(id).value.trim(); }
+function getTitul(){
+  const out={};
+  NIVEIS.forEach(n=>{ out[n.id]={ curso:document.querySelector('[data-f="'+n.id+'-curso"]').value.trim(), inst:document.querySelector('[data-f="'+n.id+'-inst"]').value.trim(), ano:document.querySelector('[data-f="'+n.id+'-ano"]').value.trim() }; });
+  return out;
+}
+function marcarCampo(id,invalido){ const el=document.getElementById(id); el.style.borderColor=invalido?'var(--vermelho)':''; }
+
+async function enviarExterno(){
+  let ok=true, primeiroInvalido=null;
+  const marcar=(id,invalido)=>{ marcarCampo(id,invalido); if(invalido){ ok=false; if(!primeiroInvalido) primeiroInvalido=id; } };
+  const nome=getVal('ext-nome'), cpf=getVal('ext-cpf'), email=getVal('ext-email'), inst=getVal('ext-inst'), ppg=getVal('ext-ppg');
+  marcar('ef-nome', !nome);
+  const cpfOk=validaCPF(cpf); marcar('ef-cpf', !cpfOk);
+  const emailOk=!email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); marcar('ef-email', !emailOk);
+  marcar('ef-inst', !inst);
+  marcar('ef-ppg', !ppg);
+  if(!ok){
+    toast('Revise os campos destacados em vermelho.','err');
+    const campo=document.getElementById(primeiroInvalido);
+    if(campo){ campo.scrollIntoView({behavior:'smooth',block:'center'}); campo.querySelector('input')?.focus(); }
+    return;
+  }
+
+  const dados={ nome, cpf, email, instituicao:inst, programa:ppg, cargo:getVal('ext-cargo'), lattes:getVal('ext-lattes'), titulacao:getTitul(), arquivo:extFileData };
+  const btn=document.getElementById('ext-submit');
+  if(btn){ btn.disabled=true; btn.dataset.txt=btn.textContent; btn.textContent='Enviando…'; }
+  const j=await DB.salvarExterno(dados);
+  if(btn){ btn.disabled=false; btn.textContent=btn.dataset.txt||'Registrar cadastro'; }
+  if(!j.ok){ toast(j.erro||'Não foi possível enviar o cadastro.','err'); return; }
+  document.getElementById('ext-proto').textContent=j.protocolo;
+  document.getElementById('ext-rc-nome').textContent=nome;
+  document.getElementById('ext-rc-inst').textContent=inst;
+  document.getElementById('ext-form-wrap').style.display='none';
+  document.getElementById('ext-success').classList.remove('hidden');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function novoCadastroExterno(){
+  document.querySelectorAll('#ext-form-wrap input').forEach(i=>i.value='');
+  clearFile();
+  document.getElementById('ext-success').classList.add('hidden');
+  document.getElementById('ext-form-wrap').style.display='';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+async function buscarExterno(){
+  const cpf=getVal('ext-qcpf'); const out=document.getElementById('ext-resultado');
+  if(!validaCPF(cpf)){ out.innerHTML='<div class="banner-erro">Informe um CPF válido.</div>'; return; }
+  out.innerHTML='<p class="empty">Consultando…</p>';
+  const r=await DB.consultarExternoPorCPF(cpf);
+  if(!r.ok){ out.innerHTML='<div class="banner-erro">'+DB.escapeHtml(r.erro||'Falha na consulta.')+'</div>'; return; }
+  if(r.encontrado){
+    out.innerHTML='<div class="section"><div class="label-section">Participante localizado</div>'+
+      '<p><strong>Nome:</strong> '+DB.escapeHtml(r.nome)+'</p>'+
+      '<p><strong>Instituição:</strong> '+DB.escapeHtml(r.instituicao||'—')+'</p>'+
+      '<p><strong>Programa:</strong> '+DB.escapeHtml(r.programa||'—')+'</p>'+
+      '<p><strong>Diploma:</strong> '+(r.diploma?'anexado':'não anexado')+'</p>'+
+      '<p class="hint">O nome aparece parcialmente abreviado por proteção de dados. Se for a pessoa certa, não é preciso cadastrar de novo.</p></div>';
+  } else {
+    out.innerHTML='<div class="empty">Nenhum cadastro encontrado. Confira o CPF ou registre acima.</div>';
+  }
+}
+
+/* ───────── Faixa de estado do sistema (configuração / modo demonstração) ───────── */
+(function faixaSistema(){
+  const el=document.getElementById('faixa-sistema'); if(!el) return;
+  if(DB.PROBLEMA){
+    el.className='faixa-sistema erro';
+    el.innerHTML='⚠ Sistema não configurado: '+DB.escapeHtml(DB.PROBLEMA)+' — avise a secretaria.';
+    return;
+  }
+  if(DB.ehDemo()){
+    el.className='faixa-sistema demo';
+    el.textContent='MODO DEMONSTRAÇÃO — dados fictícios, gravados apenas neste navegador. Não envie dados reais.';
+  }
+})();
+</script>
+</body>
+</html>
