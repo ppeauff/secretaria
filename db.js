@@ -504,7 +504,10 @@ const Demo = (function(){
       db[campo].push(item); return {ok:true};
     },
     modelosCarregar(){
-      return {ok:false, erro:'No modo de demonstração os modelos são anexados à mão. A carga automática do Drive funciona no modo de produção.'};
+      return {ok:false, erro:'A carga de modelos a partir do Drive funciona apenas no modo de produção.'};
+    },
+    modelosDefinir(){
+      return {ok:false, erro:'A definição de modelos funciona apenas no modo de produção.'};
     },
     reiniciarDemo(){ try{ localStorage.removeItem(CHAVE); }catch(e){} semear(true); return {ok:true}; }
   };
@@ -574,6 +577,7 @@ global.DB = {
   removerBanca: id => executar('bancaRemover',{id}),
   restaurar: (tipo,id) => executar('restaurar',{tipo,id}),
   carregarModelos: () => executar('modelosCarregar',{}),
+  definirModelos: mapa => executar('modelosDefinir',{mapa}),
   reiniciarDemo: ()=> MODO==='demo' ? executar('reiniciarDemo',{}) : Promise.resolve({ok:false, erro:'Disponível apenas no modo de demonstração.'})
 };
 
