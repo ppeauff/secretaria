@@ -19,7 +19,8 @@ body{background:linear-gradient(150deg,var(--azul) 0%,var(--azul-3) 55%,#274b8c 
 .top-badge{color:var(--dourado-2);letter-spacing:4px;font-size:12px;font-weight:700;text-transform:uppercase;margin-bottom:10px}
 h1{font-family:var(--serif);font-style:italic;font-weight:500;color:#fff;font-size:44px;text-align:center;line-height:1.15}
 .sub{color:#c7d1e8;text-align:center;max-width:520px;margin:14px auto 40px;font-size:15px}
-.cards{display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:820px;width:100%}
+.cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;max-width:1180px;width:100%}
+@media(max-width:980px){.cards{grid-template-columns:1fr 1fr}}
 @media(max-width:680px){.cards{grid-template-columns:1fr}}
 .card{background:#fff;border-radius:16px;padding:34px 30px;box-shadow:0 20px 60px rgba(0,0,0,.28);text-decoration:none;color:var(--texto);transition:transform .2s, box-shadow .2s;border-top:4px solid var(--dourado)}
 .card:hover{transform:translateY(-4px);box-shadow:0 26px 70px rgba(0,0,0,.34)}
@@ -43,6 +44,12 @@ h1{font-family:var(--serif);font-style:italic;font-weight:500;color:#fff;font-si
       <h2>Sou discente</h2>
       <p>Marque sua banca (Defesa de Projeto, Qualificação ou Defesa Final), cadastre um membro externo à UFF ou consulte o andamento do seu protocolo.</p>
       <div class="tags"><span class="tag">Marcar banca</span><span class="tag">Cadastro externo</span><span class="tag">Consultar protocolo</span></div>
+    </a>
+    <a class="card" href="aluno.html?aba=externo">
+      <div class="icon">🧾</div>
+      <h2>Cadastro de participante externo</h2>
+      <p>Membro de banca que não é do PPEA/UFF? Registre aqui seus dados, titulação e diploma para poder compor a comissão.</p>
+      <div class="tags"><span class="tag">Sem login</span><span class="tag">Consulta por CPF</span></div>
     </a>
     <a class="card" href="secretaria.html">
       <div class="icon">🗂️</div>

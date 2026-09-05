@@ -406,10 +406,9 @@ table.comissao input:focus{outline:none;border-color:var(--dourado)}
   <div id="pane-consulta" class="hidden">
     <section class="card">
       <h2>Consultar protocolo de banca</h2>
-      <p class="hint" style="margin-top:6px">Por segurança, a consulta pede o protocolo <b>e</b> a sua matrícula — assim ninguém consegue ver a situação de bancas de outras pessoas.</p>
+      <p class="hint" style="margin-top:6px">Informe o número do protocolo recebido ao marcar a banca.</p>
       <div class="grid-2" style="max-width:640px;margin-top:14px">
         <div class="field"><label>Número do protocolo</label><input type="text" id="f-protocolo" placeholder="PPEA-2026-0001" onkeydown="if(event.key==='Enter')consultarProtocolo()"></div>
-        <div class="field"><label>Sua matrícula</label><input type="text" id="f-protocolo-matricula" placeholder="Somente números" onkeydown="if(event.key==='Enter')consultarProtocolo()"></div>
       </div>
       <div class="actions" style="justify-content:flex-start">
         <button class="btn btn-primary" onclick="consultarProtocolo()">Consultar</button>
@@ -490,6 +489,12 @@ function atualizarCrumb(){
 }
 
 document.querySelectorAll('.choice').forEach(el=>{ el.addEventListener('click',()=>{ estado.modalidade=el.dataset.modalidade; mostrar('step-2'); carregarTurmas(); }); ativavelPorTeclado(el); });
+
+/* Permite abrir direto numa aba específica via link, ex.: aluno.html?aba=externo */
+(function abrirAbaPorLink(){
+  const aba=new URLSearchParams(location.search).get('aba');
+  if(aba==='externo'||aba==='consulta') mudarAba(aba);
+})();
 
 /* Avisa antes de sair da página se houver dados digitados no formulário de banca ainda não enviados */
 document.getElementById('form-banca').addEventListener('input',()=>{ formSujo=true; });
@@ -593,7 +598,7 @@ function renderAlunos(arr){
   lista.innerHTML='';
   arr.forEach(a=>{
     const d=document.createElement('div'); d.className='row'; d.setAttribute('aria-label','Selecionar aluno '+a.nome);
-    d.innerHTML='<div><div class="ttl">'+DB.escapeHtml(a.nome)+'</div><div class="meta">Matrícula: '+DB.escapeHtml(a.matricula||'—')+' · Orientador: '+DB.escapeHtml(a.orientador||'—')+'</div></div><div class="arr">→</div>';
+    d.innerHTML='<div><div class="ttl">'+DB.escapeHtml(a.nome)+'</div><div class="meta">Orientador: '+DB.escapeHtml(a.orientador||'—')+'</div></div><div class="arr">→</div>';
     d.onclick=()=>{ estado.aluno=a; document.getElementById('pill-modalidade').textContent=(estado.modalidade==='mestrado'?'MESTRADO':'DOUTORADO'); mostrar('step-4'); };
     ativavelPorTeclado(d);
     lista.appendChild(d);
@@ -729,12 +734,10 @@ function copiarProtocolo(id){
 /* ───────── Consulta de protocolo ───────── */
 async function consultarProtocolo(){
   const num=document.getElementById('f-protocolo').value.trim();
-  const mat=document.getElementById('f-protocolo-matricula').value.trim();
   const out=document.getElementById('resultado-consulta');
   if(!num){ out.innerHTML='<div class="banner-erro">Informe um protocolo.</div>'; return; }
-  if(!mat){ out.innerHTML='<div class="banner-erro">Informe sua matrícula.</div>'; return; }
   out.innerHTML='<p class="empty">Consultando…</p>';
-  const r=await DB.consultarProtocolo(num, mat);
+  const r=await DB.consultarProtocolo(num);
   if(!r.ok){ out.innerHTML='<div class="banner-erro">'+DB.escapeHtml(r.erro||'Protocolo não encontrado.')+'</div>'; return; }
   const j=r.banca;
   const status=j.status||'pendente';

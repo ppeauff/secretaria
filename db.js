@@ -78,6 +78,22 @@ function uid(p){ return (p||'id')+'_'+Date.now().toString(36)+Math.random().toSt
 function hoje(){ const d=new Date(); d.setHours(0,0,0,0); return d; }
 function diasCorridosAte(dataStr){ if(!dataStr) return null; const alvo=new Date(dataStr+'T00:00:00'); return Math.round((alvo-hoje())/86400000); }
 function addDias(iso,n){ const d=new Date(iso); d.setDate(d.getDate()+n); return d.toISOString(); }
+/* ---------------- Prazos por fase, a partir da data de matrícula (config.js → PRAZOS_MESES) ---------------- */
+const PRAZOS_MESES = CFG.PRAZOS_MESES || {};
+function dataLimiteFase(dataMatriculaISO, modalidade, tipoBanca){
+  if(!dataMatriculaISO) return null;
+  const meses=(PRAZOS_MESES[modalidade]||{})[tipoBanca];
+  if(meses==null) return null;
+  const m=String(dataMatriculaISO).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(!m) return null;
+  const d=new Date(+m[1], +m[2]-1+meses, +m[3]);
+  return d.toISOString().slice(0,10);
+}
+function diasParaPrazoFase(dataMatriculaISO, modalidade, tipoBanca){
+  const limite=dataLimiteFase(dataMatriculaISO, modalidade, tipoBanca);
+  if(!limite) return null;
+  return diasCorridosAte(limite);
+}
 function fData(s){ if(!s) return '—'; const m=String(s).match(/^(\d{4})-(\d{2})-(\d{2})/); return m?(m[3]+'/'+m[2]+'/'+m[1]):s; }
 function fDataHora(iso){ try{ return new Date(iso).toLocaleString('pt-BR'); }catch(e){ return iso||''; } }
 function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -386,9 +402,8 @@ const Demo = (function(){
       return {ok:true, banca, foraDoPrazo, status};
     },
     consultaProtocolo(db,d){
-      const b=db.bancas.find(x=>(x.protocolo||'').toLowerCase()===(d.protocolo||'').toLowerCase()
-        && soDigitos(x.matricula)===soDigitos(d.matricula));
-      if(!b) return {ok:false, erro:'Protocolo não encontrado para essa matrícula.'};
+      const b=db.bancas.find(x=>(x.protocolo||'').toLowerCase()===(d.protocolo||'').toLowerCase());
+      if(!b) return {ok:false, erro:'Protocolo não encontrado.'};
       return {ok:true, banca:{ protocolo:b.protocolo, tipoBanca:b.tipoBanca, nome:b.nome, data:b.data, hora:b.hora,
         apresentacao:b.apresentacao, status:b.status, observacao:b.observacao||'' }};
     },
@@ -541,6 +556,7 @@ global.DB = {
 
   /* utilitários */
   uid, diasCorridosAte, addDias, fData, fDataHora, escapeHtml, debounce, copiarTexto, soDigitos, cpfValido,
+  dataLimiteFase, diasParaPrazoFase, PRAZOS_MESES,
   validarBanca, statusPrazoDocumentos,
 
   /* sessão */
@@ -561,7 +577,7 @@ global.DB = {
   criarBanca: registro => executar('bancaCriar',{registro}),
   buscarParaCorrecao: (protocolo,matricula) => executar('bancaBuscarParaCorrecao',{protocolo,matricula}),
   corrigirBanca: (protocolo,matricula,registro) => executar('bancaCorrigir',{protocolo,matricula,registro}),
-  consultarProtocolo: (protocolo,matricula) => executar('consultaProtocolo',{protocolo,matricula}),
+  consultarProtocolo: (protocolo) => executar('consultaProtocolo',{protocolo}),
   salvarExterno: dados => executar('externoSalvar',{dados}),
   consultarExternoPorCPF: cpf => executar('externoConsulta',{cpf}),
 
