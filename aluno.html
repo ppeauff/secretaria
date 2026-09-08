@@ -77,6 +77,20 @@ header.top .voltar{color:rgba(255,255,255,.7);font-size:12.5px}
 .tipo:hover{border-color:var(--dourado);background:var(--creme-2);transform:translateY(-2px)}
 .tipo h4{font-family:var(--serif);font-size:21px;color:var(--azul);font-weight:600;margin-bottom:6px}
 .tipo p{font-size:13px;color:var(--cinza)}
+/* Sinalização de banca já solicitada (passo 4) */
+.tipo{position:relative}
+.tipo.j-ok{border-color:var(--verde);background:#f0fdf4}
+.tipo.j-ok:hover{border-color:var(--verde);background:#e6f8ed}
+.tipo.j-an{border-color:var(--ambar);background:#fffbeb}
+.tipo.j-an:hover{border-color:var(--ambar);background:#fef8e3}
+.tipo.j-dv{border-color:#c2410c;background:#fff7ed}
+.tipo.j-dv:hover{border-color:#c2410c;background:#ffefe0}
+.tipo-status{display:inline-block;margin-top:12px;padding:4px 11px;border-radius:999px;font-size:12px;font-weight:600}
+.tipo-status.s-ok{background:#dcfce7;color:#14532d}
+.tipo-status.s-rl{background:#e0e7ff;color:#1e3a8a}
+.tipo-status.s-an{background:#fef3c7;color:#78350f}
+.tipo-status.s-dv{background:#ffedd5;color:#7c2d12}
+.tipo-proto{display:block;margin-top:6px;font-size:11px;color:var(--cinza);letter-spacing:.03em}
 .section{background:#fff;border-left:4px solid var(--dourado);padding:24px 28px;border-radius:8px;margin-bottom:18px}
 .section .label-section{font-size:11px;letter-spacing:2.5px;color:var(--dourado);text-transform:uppercase;font-weight:600;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--cinza-3)}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
@@ -247,6 +261,7 @@ table.comissao input:focus{outline:none;border-color:var(--dourado)}
     <section class="card hidden" id="step-4">
       <div class="crumb" id="crumb-4"></div>
       <h2>Solicitação de Banca <span class="pill" id="pill-modalidade" style="margin-left:8px"></span></h2>
+      <div id="banner-tipos" style="margin-top:14px"></div>
       <div class="section" style="margin-top:18px">
         <div class="label-section">Tipo de Banca</div>
         <div class="tipos">
@@ -474,7 +489,7 @@ function voltarPara(n){
   if(n===3){estado.aluno=estado.tipo=null;}
   if(n===4){estado.tipo=null;}
   mostrar('step-'+n);
-  if(n===2) carregarTurmas(); if(n===3) carregarAlunos();
+  if(n===2) carregarTurmas(); if(n===3) carregarAlunos(); if(n===4) carregarSituacaoTipos();
 }
 function reiniciar(){ estado.modalidade=estado.turma=estado.aluno=estado.tipo=null; CORRECAO.ativo=false; CORRECAO.protocolo=null; CORRECAO.matricula=null; formSujo=false; document.getElementById('banner-correcao').innerHTML=''; mostrar('step-1'); }
 function atualizarCrumb(){
@@ -599,7 +614,7 @@ function renderAlunos(arr){
   arr.forEach(a=>{
     const d=document.createElement('div'); d.className='row'; d.setAttribute('aria-label','Selecionar aluno '+a.nome);
     d.innerHTML='<div><div class="ttl">'+DB.escapeHtml(a.nome)+'</div><div class="meta">Orientador: '+DB.escapeHtml(a.orientador||'—')+'</div></div><div class="arr">→</div>';
-    d.onclick=()=>{ estado.aluno=a; document.getElementById('pill-modalidade').textContent=(estado.modalidade==='mestrado'?'MESTRADO':'DOUTORADO'); mostrar('step-4'); };
+    d.onclick=()=>{ estado.aluno=a; document.getElementById('pill-modalidade').textContent=(estado.modalidade==='mestrado'?'MESTRADO':'DOUTORADO'); mostrar('step-4'); carregarSituacaoTipos(); };
     ativavelPorTeclado(d);
     lista.appendChild(d);
   });
@@ -620,11 +635,95 @@ const filtrarAlunos = DB.debounce(async function(){
   renderAlunos(estado.alunosCache);
 }, 300);
 
+/* ───────── Situação das bancas já solicitadas pelo discente (passo 4) ─────────
+   Depende do endpoint DB.bancasDoAluno(alunoId, turmaId), que deve devolver
+   { ok:true, bancas:[{protocolo, tipoBanca, status, data, hora, observacao}] }.
+   Se o endpoint ainda não existir, a tela funciona exatamente como antes. */
+const SIT_TIPOS = {};
+const SIT_ORDEM = { devolvida:1, pendente:2, 'aguardando-orientador':2, aprovada:3, realizada:4 };
+const SIT_VISUAL = {
+  aprovada:              { cls:'j-ok', badge:'s-ok', txt:'✓ Banca aprovada' },
+  realizada:             { cls:'j-ok', badge:'s-rl', txt:'✓ Banca realizada' },
+  pendente:              { cls:'j-an', badge:'s-an', txt:'⏳ Solicitação em análise' },
+  'aguardando-orientador':{ cls:'j-an', badge:'s-an', txt:'⏳ Aguardando anuência do orientador' },
+  devolvida:             { cls:'j-dv', badge:'s-dv', txt:'↩ Devolvida — precisa de correção' }
+};
+
+function limparSituacaoTipos(){
+  Object.keys(SIT_TIPOS).forEach(k=>delete SIT_TIPOS[k]);
+  document.querySelectorAll('#step-4 .tipo').forEach(el=>{
+    el.classList.remove('j-ok','j-an','j-dv');
+    el.querySelectorAll('.tipo-status,.tipo-proto').forEach(x=>x.remove());
+    el.setAttribute('aria-label', el.dataset.rotulo || el.getAttribute('aria-label'));
+  });
+  const b=document.getElementById('banner-tipos'); if(b) b.innerHTML='';
+}
+
+async function carregarSituacaoTipos(){
+  document.querySelectorAll('#step-4 .tipo').forEach(el=>{ if(!el.dataset.rotulo) el.dataset.rotulo=el.getAttribute('aria-label')||''; });
+  limparSituacaoTipos();
+  if(!estado.aluno || typeof DB.bancasDoAluno!=='function') return;
+  let j; try{ j = await DB.bancasDoAluno(estado.aluno.id, estado.turma && estado.turma.id); }catch(e){ return; }
+  if(!j || !j.ok) return;
+  (j.bancas||[]).forEach(b=>{
+    if(!b || !b.tipoBanca || b.status==='cancelada') return;
+    const atual=SIT_TIPOS[b.tipoBanca];
+    if(!atual || (SIT_ORDEM[b.status]||0) >= (SIT_ORDEM[atual.status]||0)) SIT_TIPOS[b.tipoBanca]=b;
+  });
+  document.querySelectorAll('#step-4 .tipo').forEach(el=>{
+    const b=SIT_TIPOS[el.dataset.tipo]; if(!b) return;
+    const v=SIT_VISUAL[b.status]||SIT_VISUAL.pendente;
+    el.classList.add(v.cls);
+    const badge=document.createElement('div'); badge.className='tipo-status '+v.badge; badge.textContent=v.txt;
+    const proto=document.createElement('span'); proto.className='tipo-proto';
+    proto.textContent=b.protocolo + (b.data ? ' · ' + DB.fData(b.data) : '');
+    el.appendChild(badge); el.appendChild(proto);
+    el.setAttribute('aria-label',(el.dataset.rotulo||'')+' — '+v.txt+', protocolo '+b.protocolo);
+  });
+}
+
+function abrirTipo(tipo){
+  estado.tipo=tipo;
+  document.getElementById('pill-tipo').textContent=TIPOS_LABEL[tipo].toUpperCase();
+  preencherFormulario(); mostrar('step-5');
+}
+
+function avisarJaMarcada(tipo){
+  const b=SIT_TIPOS[tipo]; if(!b) return abrirTipo(tipo);
+  const rotulo=TIPOS_LABEL[tipo]||tipo;
+  const quando=b.data ? ' para <b>'+DB.escapeHtml(DB.fData(b.data))+(b.hora?' às '+DB.escapeHtml(b.hora):'')+'</b>' : '';
+  const cx=document.getElementById('banner-tipos');
+  let corpo, classe;
+  if(b.status==='devolvida'){
+    classe='banner-aviso';
+    corpo='Sua solicitação de <b>'+DB.escapeHtml(rotulo)+'</b> (protocolo <b>'+DB.escapeHtml(b.protocolo)+'</b>) foi <b>devolvida</b> pelo avaliador'+
+          (b.observacao?':<br>'+DB.escapeHtml(b.observacao):'.')+
+          '<br>Corrija a solicitação existente — não é preciso marcar de novo.'+
+          '<div class="actions" style="justify-content:flex-start;margin-top:10px">'+
+          '<button class="btn btn-primary" type="button" onclick="corrigirDevolvida(\''+DB.escapeHtml(b.protocolo)+'\')">Corrigir solicitação</button>'+
+          '<button class="btn btn-ghost" type="button" onclick="marcarMesmoAssim(\''+tipo+'\')">Marcar outra assim mesmo</button></div>';
+  } else {
+    classe = (b.status==='aprovada'||b.status==='realizada') ? 'banner-info' : 'banner-aviso';
+    corpo='Você já tem uma solicitação de <b>'+DB.escapeHtml(rotulo)+'</b>'+quando+
+          ' — protocolo <b>'+DB.escapeHtml(b.protocolo)+'</b>, situação <b>'+DB.escapeHtml((STATUS_LABEL[b.status]||b.status)).toUpperCase()+'</b>.'+
+          '<div class="actions" style="justify-content:flex-start;margin-top:10px">'+
+          '<button class="btn btn-primary" type="button" onclick="verProtocolo(\''+DB.escapeHtml(b.protocolo)+'\')">Ver situação</button>'+
+          '<button class="btn btn-ghost" type="button" onclick="marcarMesmoAssim(\''+tipo+'\')">Marcar mesmo assim</button></div>';
+  }
+  cx.innerHTML='<div class="'+classe+'">'+corpo+'</div>';
+  cx.scrollIntoView({block:'center',behavior:'smooth'});
+}
+
+function marcarMesmoAssim(tipo){ document.getElementById('banner-tipos').innerHTML=''; abrirTipo(tipo); }
+function verProtocolo(proto){ mudarAba('consulta'); document.getElementById('f-protocolo').value=proto; consultarProtocolo(); }
+function corrigirDevolvida(proto){ abrirModalCorrecao(); document.getElementById('modal-correcao-proto').value=proto; setTimeout(()=>document.getElementById('modal-correcao-matricula').focus(),60); }
+
 document.querySelectorAll('.tipo').forEach(el=>{
   el.addEventListener('click',()=>{
-    estado.tipo=el.dataset.tipo;
-    document.getElementById('pill-tipo').textContent=TIPOS_LABEL[estado.tipo].toUpperCase();
-    preencherFormulario(); mostrar('step-5');
+    const tipo=el.dataset.tipo;
+    if(SIT_TIPOS[tipo]) return avisarJaMarcada(tipo);
+    document.getElementById('banner-tipos').innerHTML='';
+    abrirTipo(tipo);
   });
   ativavelPorTeclado(el);
 });
