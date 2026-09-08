@@ -22,7 +22,7 @@ window.PPEA_CONFIG = {
      Web App. Ela termina em /exec — nunca em /dev.
      Ex.: 'https://script.google.com/macros/s/AKfycb.../exec'
      ───────────────────────────────────────────────────────────────── */
-  API_URL: 'https://script.google.com/macros/s/AKfycbwyPxOsR1HG1lNQiIWlIhoZJN5OvpLViiEI0fm52GVKzpAK_Loxkex0tk25FQOc0wV5vg/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbx6JoxbxYaZsNLlRA6PLMO_4X2H1RLIdc8Lv2ef4CgCm_o0Yrf_rmQQcEPPAqba-lBqqg/exec',
 
   /* ─────────────────────────────────────────────────────────────────
      3) PRIVACIDADE DA LISTA DE DISCENTES (portal do aluno)
