@@ -70,6 +70,6 @@ window.PPEA_CONFIG = {
      A senha abaixo é pública por natureza (está no código-fonte):
      serve apenas para treinamento com dados fictícios.
      ───────────────────────────────────────────────────────────────── */
-  PERMITIR_DEMO: false,
+  PERMITIR_DEMO: true,
   SENHA_DEMO: 'treinamento'
 };
