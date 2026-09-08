@@ -407,6 +407,13 @@ const Demo = (function(){
       return {ok:true, banca:{ protocolo:b.protocolo, tipoBanca:b.tipoBanca, nome:b.nome, data:b.data, hora:b.hora,
         apresentacao:b.apresentacao, status:b.status, observacao:b.observacao||'' }};
     },
+    bancasDoAluno(db,d){
+      const arr=db.bancas.filter(b=> b.alunoId===d.alunoId
+        && (!d.turmaId || b.turmaId===d.turmaId)
+        && b.status!=='cancelada');
+      return {ok:true, bancas: arr.map(b=>({ protocolo:b.protocolo, tipoBanca:b.tipoBanca,
+        status:b.status, data:b.data||'', hora:b.hora||'', observacao:b.observacao||'' }))};
+    },
     externoSalvar(db,d){
       const dados=d.dados||{};
       if(!dados.nome || !dados.instituicao) return {ok:false, erro:'Nome e instituição são obrigatórios.'};
@@ -578,6 +585,7 @@ global.DB = {
   buscarParaCorrecao: (protocolo,matricula) => executar('bancaBuscarParaCorrecao',{protocolo,matricula}),
   corrigirBanca: (protocolo,matricula,registro) => executar('bancaCorrigir',{protocolo,matricula,registro}),
   consultarProtocolo: (protocolo) => executar('consultaProtocolo',{protocolo}),
+  bancasDoAluno: (alunoId,turmaId) => executar('bancasDoAluno',{alunoId,turmaId}),
   salvarExterno: dados => executar('externoSalvar',{dados}),
   consultarExternoPorCPF: cpf => executar('externoConsulta',{cpf}),
 
